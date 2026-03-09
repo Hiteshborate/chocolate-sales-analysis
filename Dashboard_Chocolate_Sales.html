@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chocolate Sales Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f0f2f5;
+    --panel: #ffffff;
+    --accent: #118DFF;
+    --accent2: #12239E;
+    --green: #01B8AA;
+    --gold: #F2C80F;
+    --red: #E8594A;
+    --purple: #8B58A0;
+    --border: #e4e6ea;
+    --text: #252423;
+    --muted: #666;
+    --nav: #1a1a2e;
+  }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    background: var(--nav);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    height: 48px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    color: #fff; font-weight: 700; font-size: 15px; letter-spacing: .5px;
+  }
+  .nav-logo span { font-size: 20px; }
+  .nav-badge {
+    background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700; padding: 2px 8px;
+    border-radius: 10px; letter-spacing: .8px;
+  }
+  .nav-right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  .nav-pill {
+    background: rgba(255,255,255,.1); color: #ccc;
+    font-size: 11px; padding: 4px 12px; border-radius: 12px;
+  }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: #01B8AA; }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 60%, #16213e 100%);
+    padding: 24px 28px 20px;
+    color: #fff;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: .3px; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 4px; }
+  .header-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .meta-chip {
+    background: rgba(255,255,255,.1); color: rgba(255,255,255,.85);
+    font-size: 11px; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,.2);
+  }
+
+  /* ── KPI STRIP ── */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    padding: 20px 28px;
+  }
+
+  .kpi {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 16px 18px;
+    border-left: 4px solid var(--accent);
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    position: relative;
+    overflow: hidden;
+    transition: transform .15s, box-shadow .15s;
+    cursor: default;
+  }
+  .kpi:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+  .kpi::after {
+    content: ''; position: absolute; right: -20px; top: -20px;
+    width: 80px; height: 80px; border-radius: 50%;
+    background: rgba(0,0,0,.04);
+  }
+  .kpi-icon { font-size: 22px; margin-bottom: 8px; }
+  .kpi-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .6px; }
+  .kpi-value { font-size: 24px; font-weight: 700; margin: 4px 0 2px; color: var(--text); }
+  .kpi-sub { font-size: 11px; color: var(--muted); }
+
+  .kpi.green  { border-left-color: var(--green); }
+  .kpi.gold   { border-left-color: var(--gold); }
+  .kpi.red    { border-left-color: var(--red); }
+  .kpi.purple { border-left-color: var(--purple); }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+    padding: 0 28px 28px;
+  }
+
+  .card {
+    background: var(--panel);
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-header {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: .5px; }
+  .card-tag { font-size: 10px; background: #EFF6FF; color: var(--accent); padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .card-body { padding: 16px 18px; flex: 1; position: relative; }
+
+  /* spans */
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+
+  /* ── CHART CONTAINERS ── */
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { max-width: 100%; }
+
+  /* ── TABLE ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th {
+    background: #f7f8fa; color: var(--muted);
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .5px; padding: 8px 12px; text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+  .data-table td { padding: 9px 12px; border-bottom: 1px solid #f0f1f3; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: #f9fbff; }
+  .rank { font-weight: 700; color: var(--accent); }
+  .bar-cell { display: flex; align-items: center; gap: 8px; }
+  .mini-bar { height: 6px; border-radius: 3px; background: var(--accent); opacity: .7; min-width: 4px; }
+  .badge-yes { color: var(--green); font-weight: 600; }
+  .badge-no  { color: var(--red); font-weight: 600; }
+
+  /* ── DONUT CENTER ── */
+  .donut-wrap { position: relative; }
+  .donut-center {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center; pointer-events: none;
+  }
+  .donut-pct { font-size: 28px; font-weight: 700; color: var(--text); }
+  .donut-lbl { font-size: 10px; color: var(--muted); font-weight: 500; }
+
+  /* ── INSIGHT CHIPS ── */
+  .insight-row { display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 18px; border-top: 1px solid var(--border); }
+  .insight { font-size: 11px; color: #444; background: #f7f8fa; border-radius: 6px; padding: 6px 12px; border-left: 3px solid var(--accent); }
+
+  /* ── FOOTER ── */
+  .footer {
+    background: var(--nav); color: rgba(255,255,255,.4);
+    text-align: center; font-size: 11px; padding: 14px;
+  }
+
+  @media (max-width: 900px) {
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .span2, .span3 { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo"><span>🍫</span> Chocolate Sales Analytics</div>
+  <span class="nav-badge">POWER BI STYLE</span>
+  <div class="nav-right">
+    <span class="nav-pill">📅 Dec 2023 – Feb 2024</span>
+    <span class="nav-pill">443 Records</span>
+    <div class="nav-dot"></div>
+    <span class="nav-pill" style="color:#01B8AA;">Live</span>
+  </div>
+</nav>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>🍫 Chocolate Sales Performance Dashboard</h1>
+      <div class="header-sub">Comprehensive analysis across channels, products, and customer segments</div>
+    </div>
+    <div class="header-meta">
+      <span class="meta-chip">📦 26 Products</span>
+      <span class="meta-chip">💼 14 Job Segments</span>
+      <span class="meta-chip">🛒 4 Channels</span>
+      <span class="meta-chip">📍 3 Months</span>
+    </div>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+  <div class="kpi green">
+    <div class="kpi-icon">💰</div>
+    <div class="kpi-label">Total Revenue</div>
+    <div class="kpi-value">₹2,13,550</div>
+    <div class="kpi-sub">3-month cumulative</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-icon">🛒</div>
+    <div class="kpi-label">Total Transactions</div>
+    <div class="kpi-value">443</div>
+    <div class="kpi-sub">All leads & visits</div>
+  </div>
+  <div class="kpi gold">
+    <div class="kpi-icon">✅</div>
+    <div class="kpi-label">Conversions</div>
+    <div class="kpi-value">326</div>
+    <div class="kpi-sub">73.6% conversion rate</div>
+  </div>
+  <div class="kpi purple">
+    <div class="kpi-icon">📦</div>
+    <div class="kpi-label">Avg Order Value</div>
+    <div class="kpi-value">₹655</div>
+    <div class="kpi-sub">Per completed purchase</div>
+  </div>
+  <div class="kpi red">
+    <div class="kpi-icon">🏆</div>
+    <div class="kpi-label">Top Product</div>
+    <div class="kpi-value" style="font-size:15px;">Organic Choco Syrup</div>
+    <div class="kpi-sub">₹12,110 revenue</div>
+  </div>
+</div>
+
+<!-- CHARTS GRID -->
+<div class="grid">
+
+  <!-- Revenue Trend (span 2) -->
+  <div class="card span2">
+    <div class="card-header">
+      <span class="card-title">📈 Monthly Revenue Trend</span>
+      <span class="card-tag">Line Chart</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap"><canvas id="lineChart" height="200"></canvas></div>
+    </div>
+    <div class="insight-row">
+      <span class="insight">⬇️ Revenue fell 30.3% from Dec to Feb</span>
+      <span class="insight">📅 Dec 2023 was peak month at ₹83,605</span>
+      <span class="insight">🔍 Avg order declining month-on-month</span>
+    </div>
+  </div>
+
+  <!-- Conversion Donut -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🎯 Conversion Rate</span>
+      <span class="card-tag">Donut</span>
+    </div>
+    <div class="card-body">
+      <div class="donut-wrap" style="height:200px;">
+        <canvas id="donutChart"></canvas>
+        <div class="donut-center">
+          <div class="donut-pct">73.6%</div>
+          <div class="donut-lbl">Converted</div>
+        </div>
+      </div>
+    </div>
+    <div class="insight-row">
+      <span class="insight">✅ 326 of 443 converted</span>
+      <span class="insight">❌ 117 did not purchase</span>
+    </div>
+  </div>
+
+  <!-- Channel Bar -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🛒 Revenue by Channel</span>
+      <span class="card-tag">Bar Chart</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap"><canvas id="channelChart" height="220"></canvas></div>
+    </div>
+    <div class="insight-row">
+      <span class="insight">🌐 Website dominates at ₹81,070</span>
+    </div>
+  </div>
+
+  <!-- Top Products Horizontal -->
+  <div class="card span2">
+    <div class="card-header">
+      <span class="card-title">📦 Top 10 Products by Revenue</span>
+      <span class="card-tag">Horizontal Bar</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap"><canvas id="productChart" height="220"></canvas></div>
+    </div>
+    <div class="insight-row">
+      <span class="insight">🥇 Organic Choco Syrup leads at ₹12,110</span>
+      <span class="insight">📊 Top 3 products = 14% of total revenue</span>
+    </div>
+  </div>
+
+  <!-- Monthly Table -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📅 Monthly Breakdown</span>
+      <span class="card-tag">Table</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <table class="data-table">
+        <thead>
+          <tr><th>Month</th><th>Revenue</th><th>Txns</th><th>Conv.</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>Dec 2023</b></td><td>₹83,605</td><td>160</td><td class="badge-yes">119 ✓</td></tr>
+          <tr><td><b>Jan 2024</b></td><td>₹71,675</td><td>151</td><td class="badge-yes">108 ✓</td></tr>
+          <tr><td><b>Feb 2024</b></td><td>₹58,270</td><td>132</td><td class="badge-yes">99 ✓</td></tr>
+          <tr style="background:#f7f8fa;font-weight:700;"><td>TOTAL</td><td>₹2,13,550</td><td>443</td><td class="badge-yes">326 ✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Job Title Chart (span 2) -->
+  <div class="card span2">
+    <div class="card-header">
+      <span class="card-title">👥 Revenue by Customer Segment (Job Title)</span>
+      <span class="card-tag">Bar Chart</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap"><canvas id="jobChart" height="200"></canvas></div>
+    </div>
+    <div class="insight-row">
+      <span class="insight">🎓 Professors: highest revenue (₹35,225)</span>
+      <span class="insight">💼 Finance Pros: highest avg order (₹986)</span>
+      <span class="insight">👔 Office Assistants: most transactions (52)</span>
+    </div>
+  </div>
+
+  <!-- Channel Table -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🛒 Channel Details</span>
+      <span class="card-tag">Table</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <table class="data-table">
+        <thead>
+          <tr><th>Channel</th><th>Revenue</th><th>Txns</th><th>Share</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Website</b></td><td>₹81,070</td><td>182</td>
+            <td><div class="bar-cell"><div class="mini-bar" style="width:70px;background:#118DFF;"></div>38%</div></td>
+          </tr>
+          <tr>
+            <td><b>App</b></td><td>₹61,835</td><td>130</td>
+            <td><div class="bar-cell"><div class="mini-bar" style="width:53px;background:#01B8AA;"></div>29%</div></td>
+          </tr>
+          <tr>
+            <td><b>In Store</b></td><td>₹56,070</td><td>105</td>
+            <td><div class="bar-cell"><div class="mini-bar" style="width:48px;background:#F2C80F;"></div>26%</div></td>
+          </tr>
+          <tr>
+            <td><b>Phone In</b></td><td>₹14,575</td><td>26</td>
+            <td><div class="bar-cell"><div class="mini-bar" style="width:13px;background:#E8594A;"></div>7%</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Product Table (full width) -->
+  <div class="card span3">
+    <div class="card-header">
+      <span class="card-title">🏆 Top Products — Detailed View</span>
+      <span class="card-tag">Data Table</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>Product</th><th>Revenue (₹)</th><th>Units</th><th>Avg Price (₹)</th><th>Revenue Share</th><th>Bar</th></tr>
+        </thead>
+        <tbody id="productTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  🍫 Chocolate Sales Analytics Dashboard &nbsp;|&nbsp; Dec 2023 – Feb 2024 &nbsp;|&nbsp; Built with Chart.js &nbsp;|&nbsp; Power BI Style
+</div>
+
+<script>
+const COLORS = {
+  blue:   '#118DFF',
+  teal:   '#01B8AA',
+  gold:   '#F2C80F',
+  red:    '#E8594A',
+  purple: '#8B58A0',
+  navy:   '#12239E',
+  orange: '#FD625E',
+  green:  '#27AE60',
+};
+
+const PALETTE = [
+  '#118DFF','#01B8AA','#F2C80F','#E8594A','#8B58A0',
+  '#12239E','#FD625E','#374649','#4BC5DC','#F5A623',
+];
+
+Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#555';
+
+// ── LINE CHART ──
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: ['Dec 2023', 'Jan 2024', 'Feb 2024'],
+    datasets: [
+      {
+        label: 'Revenue (₹)',
+        data: [83605, 71675, 58270],
+        borderColor: '#118DFF',
+        backgroundColor: 'rgba(17,141,255,.08)',
+        borderWidth: 3,
+        pointBackgroundColor: '#118DFF',
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        fill: true,
+        tension: 0.35,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Transactions',
+        data: [160, 151, 132],
+        borderColor: '#01B8AA',
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#01B8AA',
+        pointRadius: 5,
+        borderDash: [5,3],
+        fill: false,
+        tension: 0.35,
+        yAxisID: 'y1',
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 12, padding: 16 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ctx.datasetIndex === 0
+            ? ` Revenue: ₹${ctx.parsed.y.toLocaleString()}`
+            : ` Transactions: ${ctx.parsed.y}`
+        }
+      }
+    },
+    scales: {
+      y: { position:'left', grid:{color:'#f0f1f3'}, ticks:{ callback: v => '₹'+v.toLocaleString() } },
+      y1: { position:'right', grid:{drawOnChartArea:false}, ticks:{ color:'#01B8AA' } },
+      x: { grid:{ display:false } }
+    }
+  }
+});
+
+// ── DONUT ──
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Converted', 'Not Converted'],
+    datasets: [{
+      data: [326, 117],
+      backgroundColor: ['#01B8AA', '#E8594A'],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '70%',
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font:{size:11} } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} (${(ctx.parsed/443*100).toFixed(1)}%)` } }
+    }
+  }
+});
+
+// ── CHANNEL BAR ──
+new Chart(document.getElementById('channelChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Website', 'App', 'In Store', 'Phone In'],
+    datasets: [{
+      label: 'Revenue (₹)',
+      data: [81070, 61835, 56070, 14575],
+      backgroundColor: ['#118DFF','#01B8AA','#F2C80F','#E8594A'],
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ₹${ctx.parsed.y.toLocaleString()}` } }
+    },
+    scales: {
+      y: { grid:{color:'#f0f1f3'}, ticks:{ callback: v => '₹'+v.toLocaleString() } },
+      x: { grid:{ display:false } }
+    }
+  }
+});
+
+// ── PRODUCT HORIZONTAL ──
+new Chart(document.getElementById('productChart'), {
+  type: 'bar',
+  data: {
+    labels: ['85% Dark Bars','Smooth Sliky Salty','After Nines','99% Dark & Pure','Eclairs','Mint Chip Choco','Milk Bars','Caramel Stuffed Bars','Spicy Special Slims','Organic Choco Syrup'],
+    datasets: [{
+      label: 'Revenue (₹)',
+      data: [6240,6800,6940,7295,7310,7390,7505,7930,10465,12110],
+      backgroundColor: PALETTE.slice(0,10).reverse(),
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ₹${ctx.parsed.x.toLocaleString()}` } }
+    },
+    scales: {
+      x: { grid:{color:'#f0f1f3'}, ticks:{ callback: v => '₹'+v.toLocaleString() } },
+      y: { grid:{ display:false } }
+    }
+  }
+});
+
+// ── JOB CHART ──
+new Chart(document.getElementById('jobChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Professor','Office Asst.','Engineer','Analyst','Sales','Tech Support','Accountant','Doctor'],
+    datasets: [
+      {
+        label: 'Revenue (₹)',
+        data: [35225,34705,26090,24040,20600,16165,14730,11705],
+        backgroundColor: PALETTE,
+        borderRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Avg Order (₹)',
+        data: [801,667,567,650,710,490,775,585],
+        type: 'line',
+        borderColor: '#E8594A',
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointBackgroundColor: '#E8594A',
+        tension: 0.35,
+        yAxisID: 'y1',
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position:'top', labels:{ boxWidth:12, padding:14 } },
+      tooltip: { callbacks: { label: ctx => ctx.datasetIndex===0 ? ` Revenue: ₹${ctx.parsed.y.toLocaleString()}` : ` Avg Order: ₹${ctx.parsed.y.toLocaleString()}` } }
+    },
+    scales: {
+      y: { position:'left', grid:{color:'#f0f1f3'}, ticks:{ callback: v => '₹'+v.toLocaleString() } },
+      y1: { position:'right', grid:{drawOnChartArea:false}, ticks:{ color:'#E8594A', callback: v => '₹'+v } },
+      x: { grid:{ display:false } }
+    }
+  }
+});
+
+// ── PRODUCT TABLE ──
+const products = [
+  ['Organic Choco Syrup', 12110, 14],
+  ['Spicy Special Slims', 10465, 13],
+  ['Caramel Stuffed Bars', 7930, 9],
+  ['Milk Bars', 7505, 10],
+  ['Mint Chip Choco', 7390, 12],
+  ['Eclairs', 7310, 11],
+  ['99% Dark & Pure', 7295, 12],
+  ['After Nines', 6940, 8],
+  ['Smooth Sliky Salty', 6800, 7],
+  ['85% Dark Bars', 6240, 7],
+];
+const totalRev = 213550;
+const medals = ['🥇','🥈','🥉'];
+const tbody = document.getElementById('productTable');
+products.forEach(([name, rev, units], i) => {
+  const pct = (rev / totalRev * 100).toFixed(1);
+  const barW = Math.round(rev / 12110 * 120);
+  tbody.innerHTML += `
+    <tr>
+      <td class="rank">${medals[i] || '#'+(i+1)}</td>
+      <td><b>${name}</b></td>
+      <td>₹${rev.toLocaleString()}</td>
+      <td>${units}</td>
+      <td>₹${Math.round(rev/units).toLocaleString()}</td>
+      <td>${pct}%</td>
+      <td><div class="bar-cell"><div class="mini-bar" style="width:${barW}px;background:${PALETTE[i]};height:8px;border-radius:4px;"></div></div></td>
+    </tr>`;
+});
+</script>
+</body>
+</html>
